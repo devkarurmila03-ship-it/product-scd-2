@@ -38,23 +38,20 @@ jobs:
         run: |
           gsutil ls gs://$BUCKET_NAME/$CODE_SUBDIR || gsutil mkdir -p gs://$BUCKET_NAME/$CODE_SUBDIR
 
-      - name: Download latest pydeequ wheel from pypi
+      - name: Download pydeequ wheel
         run: |
           python -m pip install --upgrade pip
           mkdir -p wheels
           pip download pydeequ --only-binary=:all: --no-deps -d wheels
-          echo "Found wheels:"
-          ls wheels
+          ls -l wheels
 
       - name: Upload pydeequ wheels to GCS
         run: |
-          if ls wheels/*.whl 1> /dev/null 2>&1; then
-            gsutil cp wheels/*.whl gs://$BUCKET_NAME/$CODE_SUBDIR
-          else
-            echo "No wheels found!" && exit 1
-          fi
+          ls wheels/*.whl >/dev/null 2>&1 && \
+          gsutil cp wheels/*.whl gs://$BUCKET_NAME/$CODE_SUBDIR || \
+          (echo "No wheels found!" && exit 1)
 
-      - name: Copy library modules to GCS
+      - name: Upload Python modules to GCS
         run: |
           gsutil -m cp \
             src/deequ_checks.py \
@@ -63,10 +60,6 @@ jobs:
             src/writer.py \
             gs://$BUCKET_NAME/$CODE_SUBDIR
 
-      - name: Copy main.py to GCS root
+      - name: Upload main.py to GCS
         run: |
           gsutil cp src/main.py gs://$BUCKET_NAME/products/main.py
-
-      - name: Debug GCS contents (optional)
-        run: |
-          gsutil ls -r gs://$BUCKET_NAME
