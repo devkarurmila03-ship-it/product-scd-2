@@ -34,18 +34,26 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           install_components: gsutil
 
+      - name: Ensure GCS path exists
+        run: |
+          gsutil ls gs://$BUCKET_NAME/$CODE_SUBDIR || gsutil mkdir -p gs://$BUCKET_NAME/$CODE_SUBDIR
+
       - name: Download latest pydeequ wheel from pypi
         run: |
           python -m pip install --upgrade pip
           mkdir -p wheels
           pip download pydeequ --only-binary=:all: --no-deps -d wheels
-          echo "found wheels"
+          echo "Found wheels:"
           ls wheels
-    
+
       - name: Upload pydeequ wheels to GCS
         run: |
-          gsutil cp wheels/*.whl gs://$BUCKET_NAME/$CODE_SUBDIR
-      
+          if ls wheels/*.whl 1> /dev/null 2>&1; then
+            gsutil cp wheels/*.whl gs://$BUCKET_NAME/$CODE_SUBDIR
+          else
+            echo "No wheels found!" && exit 1
+          fi
+
       - name: Copy library modules to GCS
         run: |
           gsutil -m cp \
@@ -54,7 +62,11 @@ jobs:
             src/spark_builder.py \
             src/writer.py \
             gs://$BUCKET_NAME/$CODE_SUBDIR
-    
+
       - name: Copy main.py to GCS root
         run: |
           gsutil cp src/main.py gs://$BUCKET_NAME/products/main.py
+
+      - name: Debug GCS contents (optional)
+        run: |
+          gsutil ls -r gs://$BUCKET_NAME
