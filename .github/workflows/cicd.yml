@@ -5,12 +5,17 @@ on:
     branches:
       - main
 
+# Required permissions for OIDC
+permissions:
+  id-token: write
+  contents: read
+
 env:
   BUCKET_NAME: spark-datasets-kds
   CODE_SUBDIR: products/py_modules
 
 jobs:
-  push-to-gcs:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,11 +33,11 @@ jobs:
           workload_identity_provider: "projects/542207008114/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
           service_account: "github-deployer@project-b33d6da0-bcfc-471f-99c.iam.gserviceaccount.com"
 
-      - name: Set up gcloud & gsutil
+      - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          install_components: gsutil
+          project_id: "project-b33d6da0-bcfc-471f-99c"
+          export_default_credentials: true
 
       - name: Ensure GCS path exists
         run: |
