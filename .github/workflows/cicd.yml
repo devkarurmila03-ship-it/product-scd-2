@@ -1,0 +1,59 @@
+name : Deploy to GCS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  #set your bucket here 
+  BUCKET_NAME: spark-datasets-kds
+  CODE_SUBDIR: products/py_modules
+
+jobs:
+  push-to-gcs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code 
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: "projects/542207008114/locations/global/workloadIdentityPools/github-pool-new/providers/github-provider"
+        service_account: "github-deployer@project-b33d6da0-bcfc-471f-99c.iam.gserviceaccount.com"
+
+    - name: Set up gcloud & gsutil
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        install_components: gsutil
+
+    - name: Download latest pydeequ wheel from pypi
+      run: |
+        python3 -m pip install --upgrade pip
+        mkdir -p wheels
+        pip donwload pydeequ --only-binary=:all: --no-deps -d wheels
+        echo "found wheels"
+        ls wheels
+    
+    - name: Upload pydeequ wheels to GCS
+      run: |
+        gsutil cp wheels/*.whl gs://$BUCKET_NAME/$CODE_SUBDIR
+      
+    - name: Copy library modules to GCS
+      run:
+        gsutil -m cp \
+          src/deequ_checks.py \
+          src/etl.py \
+          src/spark_builder.py \
+          src/writer.py \
+          gs://$BUCKET_NAME/$CODE_SUBDIR
+    
+    - name: copy main.py to gcs root
+      run: |
+        gsutil cp src/main.py gs://$BUCKET_NAME/products/main.py
+        
+
+
